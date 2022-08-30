@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Lambda application that calls the Lambda API.
+Resources:
+  bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+  function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/distributions/ppt2img.zip
+      Handler: com.fersoft.S3Handler
+      Runtime: java11
+      Description: Java function
+      MemorySize: 512
+      Timeout: 900
+      # Function's execution role
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaVPCAccessExecutionRole
+        - AmazonS3FullAccess
+      Tracing: Active
+      Layers:
+        - !Ref libs
+      Events:
+        s3Notification:
+          Type: S3
+          Properties:
+            Bucket: !Ref bucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: inbound/
+  libs:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: ppt2img-lib
+      Description: Dependencies for the project.
+      ContentUri: build/ppt2img-lib.zip
+      CompatibleRuntimes:
+        - java11
